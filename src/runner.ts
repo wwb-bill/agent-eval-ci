@@ -1,0 +1,6 @@
+import type{EvalCase,EvalConfig,EvalResult,EvalReport}from"./types.js";
+export type RunnerFn=(input:Record<string,unknown>)=>Promise<unknown>|unknown;
+export class EvalRunner{private snapshots=new Map<string,unknown>();
+ async run(config:EvalConfig,fn:RunnerFn):Promise<EvalReport>{const results:EvalResult[]=[];for(const c of config.cases){const start=Date.now();try{const actual=await Promise.resolve(fn(c.input));const expected=c.expected??this.snapshots.get(c.name);const passed=expected!==undefined?JSON.stringify(actual)===JSON.stringify(expected):true;results.push({caseName:c.name,passed,expected,actual,durationMs:Date.now()-start});if(expected===undefined)this.snapshots.set(c.name,actual);if(!passed&&config.failFast)break;}catch(e){results.push({caseName:c.name,passed:false,expected:c.expected,actual:undefined,durationMs:Date.now()-start,error:(e as Error).message});if(config.failFast)break;}}const pc=results.filter(r=>r.passed).length;return{passed:pc===results.length,total:results.length,passedCount:pc,failedCount:results.length-pc,results};}
+ getSnapshots():Map<string,unknown>{return this.snapshots;}
+ clearSnapshots(){this.snapshots.clear();}}
